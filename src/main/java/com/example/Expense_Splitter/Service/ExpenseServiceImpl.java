@@ -4,6 +4,7 @@ import com.example.Expense_Splitter.DTOs.ExpenseRequest;
 import com.example.Expense_Splitter.DTOs.ExpenseResponse;
 import com.example.Expense_Splitter.DTOs.ExpenseSplitDTO;
 import com.example.Expense_Splitter.Exception.ResourceNotFoundException;
+import com.example.Expense_Splitter.ExpenseSplitterApplication;
 import com.example.Expense_Splitter.Model.Expense;
 import com.example.Expense_Splitter.Model.ExpenseSplit;
 import com.example.Expense_Splitter.Model.Group;
@@ -46,7 +47,7 @@ public class ExpenseServiceImpl implements ExpenseService{
         expense.setGroup(group);
         expense.setPaidBy(paidBy);
         expense.setCreatedAt(LocalDateTime.now());
-        Expense saved = _expenseRepo.save(expense);
+       // Expense saved = _expenseRepo.save(expense);
 
         // 💰 Calculate split amount
         BigDecimal totalAmount = request.getAmount();
@@ -60,15 +61,15 @@ public class ExpenseServiceImpl implements ExpenseService{
                     .orElseThrow(() -> new ResourceNotFoundException("User ID " + userId + " not found"));
 
             ExpenseSplit split = new ExpenseSplit();
-            split.setExpense(saved);
+            split.setExpense(expense);
             split.setUser(user);
             split.setAmount(splitAmount);
 
             splits.add(split);
         }
 
-        saved.setSplits(splits);
-        _expenseRepo.save(saved);// Set to parent for bidirectional
+        expense.setSplits(splits);
+        Expense saved=_expenseRepo.save(expense);// Set to parent for bidirectional
         return convertToResponse(saved,request.getInvolvedUserIds());
     }
 
@@ -82,10 +83,50 @@ public class ExpenseServiceImpl implements ExpenseService{
         Expense expense=_expenseRepo.findById(Id).orElseThrow(()->new ResourceNotFoundException("Expense not found"));
         return convertToResponse(expense,null);
     }
+
+    @Override
+    public ExpenseResponse updateExpense(ExpenseRequest request, Long id) {
+        Expense existing= _expenseRepo.findById(id).orElseThrow(()-> new ResourceNotFoundException("Expense not found"));
+
+        User paidBy=_userRepo.findById(request.getPaidBy()).orElseThrow(()-> new ResourceNotFoundException("Payer not found"));
+
+        Group group=_groupRepo.findById(request.getGroupId()).orElseThrow(()-> new ResourceNotFoundException("Group not found"));
+
+        List<User>involved= _userRepo.findAllById(request.getInvolvedUserIds());
+        BigDecimal splitAmount=request.getAmount().divide(BigDecimal.valueOf(involved.size()),2,RoundingMode.HALF_UP);
+        existing.setDescription(request.getDescription());
+       // existing.setCreatedAt(request.getCreatedAt());
+        existing.setAmount(request.getAmount());
+        existing.setGroup(group);
+        existing.setPaidBy(paidBy);
+
+        List<ExpenseSplit>newSplit= involved.stream().map(user ->{
+            ExpenseSplit split=new ExpenseSplit();
+            split.setExpense(existing);
+            split.setUser(user);
+            split.setAmount(splitAmount);
+            return split;
+        }).toList();
+        existing.getSplits().clear();
+        existing.getSplits().addAll(newSplit);
+
+        Expense updated=_expenseRepo.save(existing);
+      return convertToResponse(updated,request.getInvolvedUserIds());
+
+
+    }
+
+    @Override
+    public void deleteExpense(Long id) {
+        Expense expense=_expenseRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Expense not found"));
+        _expenseRepo.delete(expense);
+    }
+
     private ExpenseResponse convertToResponse(Expense e, List<Long> involved) {
         ExpenseResponse res = _mapper.map(e, ExpenseResponse.class);
         res.setPaidById(e.getPaidBy().getId());
         res.setPaidByName(e.getPaidBy().getName());
+        res.setCreatedAt(e.getCreatedAt());
         res.setGroupId(e.getGroup().getId());
         res.setGroupName(e.getGroup().getName());
        // res.setInvolvedUserIds(involved != null ? involved : new ArrayList<>());

@@ -10,4 +10,6 @@ public interface ExpenseService {
     ExpenseResponse create(ExpenseRequest request);
     List<ExpenseResponse>getAll();
     ExpenseResponse getExpenseById(Long Id);
+    ExpenseResponse updateExpense(ExpenseRequest request,Long id);
+    void deleteExpense(Long id);
 }
