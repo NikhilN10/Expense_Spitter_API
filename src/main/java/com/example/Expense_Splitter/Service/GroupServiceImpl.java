@@ -44,7 +44,7 @@ public class GroupServiceImpl implements GroupService{
     @Override
     public GroupResponse getGroupById(Long id) {
        Group group=_repo.findById(id).orElseThrow(()->new ResourceNotFoundException("User not found with id: " + id));
-       return _mapper.map(group, GroupResponse.class);
+       return convertToResponse(group);
     }
 
     @Override

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -33,9 +34,8 @@ public class Expense {
     @JoinColumn(name = "paid_by")
     private User paidBy;
 
-    @OneToMany(mappedBy = "expense")
-    private List<ExpenseSplit> splits;
-
+    @OneToMany(mappedBy = "expense",cascade = CascadeType.ALL)
+    private List<ExpenseSplit> splits=new ArrayList<>();
 
 }
 
