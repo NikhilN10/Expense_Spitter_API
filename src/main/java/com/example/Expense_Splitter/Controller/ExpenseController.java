@@ -39,6 +39,18 @@ public class ExpenseController {
         return new ResponseEntity<>(e,HttpStatus.OK);
     }
 
+    @GetMapping("/group/{id}")
+    public ResponseEntity<List<ExpenseResponse>> getExpenseByGroupId(@PathVariable Long id) {
+        List<ExpenseResponse> e = _expenseService.getExpensesByGroupId(id);
+        return new ResponseEntity<>(e,HttpStatus.OK);
+    }
+    @GetMapping("/user/{id}")
+    public ResponseEntity<List<ExpenseResponse>> getExpenseByPaidByUser(@PathVariable Long id) {
+        List<ExpenseResponse> e = _expenseService.getExpensesByPaidByUser(id);
+        return new ResponseEntity<>(e,HttpStatus.OK);
+    }
+
+
     @PutMapping("/{id}")
     public ResponseEntity<ExpenseResponse> updateExpense(@Valid @RequestBody ExpenseRequest request,@PathVariable Long id){
         ExpenseResponse updatedExpense= _expenseService.updateExpense(request,id);

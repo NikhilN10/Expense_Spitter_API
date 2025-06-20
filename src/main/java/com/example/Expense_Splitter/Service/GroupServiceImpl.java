@@ -73,7 +73,9 @@ public class GroupServiceImpl implements GroupService{
                 return convertToResponse(saved);
     }
 
-        private GroupResponse convertToResponse(Group group) {
+
+
+    private GroupResponse convertToResponse(Group group) {
             GroupResponse dto = _mapper.map(group, GroupResponse.class);
             dto.setCreatedBy(_mapper.map(group.getCreatedBy(), UserSummaryDTO.class));
 

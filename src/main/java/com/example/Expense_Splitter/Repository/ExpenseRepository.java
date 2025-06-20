@@ -1,10 +1,18 @@
 package com.example.Expense_Splitter.Repository;
 
+import com.example.Expense_Splitter.DTOs.ExpenseResponse;
 import com.example.Expense_Splitter.Model.Expense;
+import com.example.Expense_Splitter.Model.Group;
 import com.example.Expense_Splitter.Model.GroupMember;
+import com.example.Expense_Splitter.Model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense,Long> {
+    List<Expense> findByGroup(Group group);
+
+    List<Expense> findByPaidBy(User user);
 }

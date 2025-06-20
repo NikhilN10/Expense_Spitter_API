@@ -122,6 +122,23 @@ public class ExpenseServiceImpl implements ExpenseService{
         _expenseRepo.delete(expense);
     }
 
+    @Override
+    public List<ExpenseResponse> getExpensesByGroupId(Long id) {
+        Group group=_groupRepo.findById(id).orElseThrow(()-> new ResourceNotFoundException("Group not found"));
+        List<Expense> expenseList= _expenseRepo.findByGroup(group);
+
+        return expenseList.stream().map(ex->convertToResponse(ex,null)).toList();
+
+    }
+
+    @Override
+    public List<ExpenseResponse> getExpensesByPaidByUser(Long id) {
+        User paidBy= _userRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Payer not found"));
+
+       List<Expense>expenseList=_expenseRepo.findByPaidBy(paidBy);
+        return expenseList.stream().map(ex->convertToResponse(ex,null)).toList();
+    }
+
     private ExpenseResponse convertToResponse(Expense e, List<Long> involved) {
         ExpenseResponse res = _mapper.map(e, ExpenseResponse.class);
         res.setPaidById(e.getPaidBy().getId());
