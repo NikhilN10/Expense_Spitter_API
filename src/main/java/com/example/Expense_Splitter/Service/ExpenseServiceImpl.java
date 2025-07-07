@@ -1,25 +1,21 @@
 package com.example.Expense_Splitter.Service;
 
-import com.example.Expense_Splitter.DTOs.ExpenseRequest;
-import com.example.Expense_Splitter.DTOs.ExpenseResponse;
-import com.example.Expense_Splitter.DTOs.ExpenseSplitDTO;
+import com.example.Expense_Splitter.DTOs.*;
 import com.example.Expense_Splitter.Exception.ResourceNotFoundException;
-import com.example.Expense_Splitter.ExpenseSplitterApplication;
-import com.example.Expense_Splitter.Model.Expense;
-import com.example.Expense_Splitter.Model.ExpenseSplit;
-import com.example.Expense_Splitter.Model.Group;
-import com.example.Expense_Splitter.Model.User;
+import com.example.Expense_Splitter.Model.*;
 import com.example.Expense_Splitter.Repository.ExpenseRepository;
 import com.example.Expense_Splitter.Repository.GroupRepository;
 import com.example.Expense_Splitter.Repository.UserRepository;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,8 +70,26 @@ public class ExpenseServiceImpl implements ExpenseService{
     }
 
     @Override
-    public List<ExpenseResponse> getAll() {
-      return  _expenseRepo.findAll().stream().map(e->convertToResponse(e,null)).toList();
+    public PaginatedResponse<ExpenseResponse> getAll(int page,int size,String description) {
+        Pageable pageable= PageRequest.of(page,size, Sort.by("createdAt").descending());
+        Page<Expense> expensePage;
+        if(description!=null || !description.isBlank()){
+            expensePage=_expenseRepo.findByDescriptionContainingIgnoreCase(description,pageable);
+        }
+        else{
+            expensePage=_expenseRepo.findAll(pageable);
+        }
+        List<ExpenseResponse>content=expensePage.getContent().stream()
+                .map(expense -> convertToResponse(expense,null))
+                .toList();
+      return  new PaginatedResponse<ExpenseResponse>(
+              content,
+              expensePage.getNumber(),
+              expensePage.getSize(),
+              expensePage.getTotalElements(),
+              expensePage.getTotalPages(),
+              expensePage.isLast()
+      );
     }
 
     @Override
@@ -137,6 +151,76 @@ public class ExpenseServiceImpl implements ExpenseService{
 
        List<Expense>expenseList=_expenseRepo.findByPaidBy(paidBy);
         return expenseList.stream().map(ex->convertToResponse(ex,null)).toList();
+    }
+
+    @Override
+    public Map<String, BigDecimal> calculateUserBalance(Long userId) {
+        User user=_userRepo.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found"));
+        List<Expense>expenses=_expenseRepo.findAll();
+
+        BigDecimal paid= BigDecimal.ZERO;
+        BigDecimal owed= BigDecimal.ZERO;
+
+        for(Expense e:expenses){
+            for(ExpenseSplit split:e.getSplits()){
+                if(split.getUser().getId().equals(userId)){
+                    owed=owed.add(split.getAmount());
+                }
+            }
+            if(e.getPaidBy().getId().equals(userId)){
+            paid=paid.add(e.getAmount());}
+        }
+        Map<String,BigDecimal>result=new HashMap<>();
+        result.put("Paid",paid);
+        result.put("Owed",owed);
+        result.put("Net Balance",paid.subtract(owed));
+
+        return result;
+
+    }
+
+    @Override
+    public List<GroupBalanceDTO> calculateGroupBalance(Long groupId) {
+        Group group=_groupRepo.findById(groupId).orElseThrow(()-> new ResourceNotFoundException("Group not found"));
+        List<User>groupMembers=group.getMembers().stream().map(gr->gr.getUser()).toList();
+        List<Expense>groupExpense=_expenseRepo.findByGroup(group);
+        Map<Long,BigDecimal>paidMap=new HashMap<>();
+        Map<Long,BigDecimal>owedMap=new HashMap<>();
+
+        for(Expense e:groupExpense){
+            Long payerId=e.getPaidBy().getId();
+            paidMap.put(payerId,paidMap.getOrDefault(payerId,BigDecimal.ZERO).add(e.getAmount()));
+        for(ExpenseSplit split:e.getSplits()){
+            Long uid=split.getUser().getId();
+            owedMap.put(uid,owedMap.getOrDefault(uid,BigDecimal.ZERO).add(split.getAmount()));
+        }
+        }
+        List<GroupBalanceDTO>result=new ArrayList<>();
+        for(User u:groupMembers) {
+            BigDecimal paid = paidMap.getOrDefault(u.getId(),BigDecimal.ZERO);
+            BigDecimal owed = owedMap.getOrDefault(u.getId(),BigDecimal.ZERO);
+            BigDecimal net=paid.subtract(owed);
+
+            GroupBalanceDTO dto= new GroupBalanceDTO(u.getId(),u.getName(),paid,owed,net);
+            result.add(dto);
+        }
+        return result;
+
+    }
+
+    @Override
+    public List<ExpenseResponse> getUserTransactions(Long userId) {
+      User user= _userRepo.findById(userId).orElseThrow(()-> new ResourceNotFoundException(" User Not Found"));
+
+      List<Expense>paidList= _expenseRepo.findByPaidBy(user);
+        List<Expense> involvedList = _expenseRepo.findBySplits_User_Id(userId);
+
+        // Use a Set to avoid duplicates when user both paid & participated
+        Set<Expense> union = new LinkedHashSet<>();
+        union.addAll(paidList);
+        union.addAll(involvedList);
+
+        return union.stream().map(e->convertToResponse(e,null)).toList();
     }
 
     private ExpenseResponse convertToResponse(Expense e, List<Long> involved) {

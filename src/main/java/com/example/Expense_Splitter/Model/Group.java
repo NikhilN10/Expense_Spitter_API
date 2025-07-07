@@ -28,7 +28,7 @@ public class Group {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "group")
-    List<GroupMember>members= new ArrayList<>();;
+    List<GroupMember>members= new ArrayList<>();
 
 
     @OneToMany(mappedBy = "group")

@@ -30,5 +30,6 @@ public class ExpenseSplit {
     private SplitStatus status = SplitStatus.PENDING;
 
 
+
 }
 

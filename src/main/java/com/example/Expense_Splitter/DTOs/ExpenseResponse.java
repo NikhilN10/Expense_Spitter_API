@@ -23,4 +23,7 @@ public class ExpenseResponse {
     private LocalDateTime createdAt;
 
     private List<ExpenseSplitDTO> splits;
+
+
+
 }

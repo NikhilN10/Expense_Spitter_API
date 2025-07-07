@@ -2,13 +2,17 @@ package com.example.Expense_Splitter.Controller;
 
 import com.example.Expense_Splitter.DTOs.ExpenseRequest;
 import com.example.Expense_Splitter.DTOs.ExpenseResponse;
+import com.example.Expense_Splitter.DTOs.GroupBalanceDTO;
+import com.example.Expense_Splitter.DTOs.PaginatedResponse;
 import com.example.Expense_Splitter.Service.ExpenseService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/expense")
@@ -21,9 +25,11 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ExpenseResponse>> getAll(){
+    public ResponseEntity<PaginatedResponse<ExpenseResponse>> getAll(@RequestParam(defaultValue = "0") int page,
+                                                                     @RequestParam(defaultValue = "10") int size,
+                                                                     @RequestParam(required = false) String description){
 
-        List<ExpenseResponse> expenseList=_expenseService.getAll();
+        PaginatedResponse<ExpenseResponse> expenseList=_expenseService.getAll(page,size,description);
         return new ResponseEntity<>(expenseList,HttpStatus.OK);
     }
 
@@ -48,6 +54,24 @@ public class ExpenseController {
     public ResponseEntity<List<ExpenseResponse>> getExpenseByPaidByUser(@PathVariable Long id) {
         List<ExpenseResponse> e = _expenseService.getExpensesByPaidByUser(id);
         return new ResponseEntity<>(e,HttpStatus.OK);
+    }
+    @GetMapping("user/{userId}/balance")
+    public ResponseEntity<Map<String, BigDecimal>>getUserBalance(@PathVariable Long userId){
+        Map<String,BigDecimal> balance=_expenseService.calculateUserBalance(userId);
+        return new ResponseEntity<>(balance,HttpStatus.OK);
+
+    }
+    @GetMapping("group/{groupId}/balance")
+    public ResponseEntity<List<GroupBalanceDTO>>getGroupBalance(@PathVariable Long groupId){
+        List<GroupBalanceDTO> balance=_expenseService.calculateGroupBalance(groupId);
+        return new ResponseEntity<>(balance,HttpStatus.OK);
+
+    }
+    @GetMapping("/user/{userId}/transactions")
+    public ResponseEntity<List<ExpenseResponse>>getUserTransactions(@PathVariable Long userId){
+        List<ExpenseResponse>e= _expenseService.getUserTransactions(userId);
+
+        return  new ResponseEntity<>(e,HttpStatus.OK);
     }
 
 

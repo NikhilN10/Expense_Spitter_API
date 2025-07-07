@@ -37,6 +37,15 @@ public class GlobalExceptionHandler {
         ), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String,Object>>handleGeneric(Exception ex){
+        return new ResponseEntity<>(Map.of(
+                "timestamp",LocalDateTime.now(),
+                "message","Internal Server Error"+ex.getMessage(),
+                "status",HttpStatus.INTERNAL_SERVER_ERROR.value()
+        ),HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     // You can add more global handlers here
 }
 
